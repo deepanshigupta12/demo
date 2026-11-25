@@ -1,0 +1,41 @@
+name: StudentApp CI
+ 
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+ 
+permissions:
+  contents: read
+ 
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: StudentApp
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+ 
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+ 
+      - name: Build, test, and generate coverage
+        run: |
+          mvn -B clean verify
+ 
+      - name: Build Docker image
+        run: |
+          docker build \
+            --file Dockerfile \
+            --tag studentapp:${GITHUB_SHA} \
+            .
