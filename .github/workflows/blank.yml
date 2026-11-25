@@ -1,5 +1,5 @@
 name: StudentApp CI
- 
+
 on:
   push:
     branches:
@@ -8,34 +8,43 @@ on:
     branches:
       - main
   workflow_dispatch:
- 
+
 permissions:
   contents: read
- 
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: StudentApp
+    timeout-minutes: 15
+    env:
+      DB_USERNAME: root
+      DB_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+          MYSQL_DATABASE: student_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -p$MYSQL_ROOT_PASSWORD || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
- 
+
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
- 
+
       - name: Build, test, and generate coverage
-        run: |
-          mvn -B clean verify
- 
+        run: bash ./mvnw -B clean verify
+
       - name: Build Docker image
-        run: |
-          docker build \
-            --file Dockerfile \
-            --tag studentapp:${GITHUB_SHA} \
-            .
+        run: docker build --file Dockerfile --tag studentapp:${GITHUB_SHA} .
